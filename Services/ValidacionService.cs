@@ -5,7 +5,13 @@ public static class ValidacionService
     public static readonly string[] Facciones = ["Rebelde", "Imperio", "Neutral"];
     public static readonly string[] Estados = ["vivo", "muerto", "desconocido"];
 
-    public static string? ValidarPersonaje(string nombre,string especie,string faccion,string afiliacion,string estado,int? anioMuerte)
+    public static string? ValidarPersonaje(
+        string nombre,
+        string especie,
+        string faccion,
+        string afiliacion,
+        string estado,
+        int? anioMuerte)
     {
         if (string.IsNullOrWhiteSpace(nombre))
             return "El nombre es obligatorio.";
@@ -22,11 +28,11 @@ public static class ValidacionService
         if (!Estados.Contains(estado))
             return "El estado debe ser vivo, muerto o desconocido.";
 
-        if (estado == "muerto" && anioMuerte is null)
-            return "Un personaje muerto debe tener anio de muerte.";
+        if (estado == "muerto" && !anioMuerte.HasValue)
+            return "Si el personaje está muerto, debe indicarse el año de muerte.";
 
-        if (estado != "muerto" && anioMuerte is not null)
-            return "Anio de muerte solo puede existir cuando el estado es muerto.";
+        if (estado != "muerto" && anioMuerte.HasValue)
+            return "Solo un personaje con estado 'muerto' puede tener año de muerte.";
 
         return null;
     }
@@ -40,10 +46,10 @@ public static class ValidacionService
         string imagenUrl)
     {
         if (personajeId <= 0)
-            return "PersonajeId debe ser mayor que 0.";
+            return "El PersonajeId no es válido.";
 
         if (poder < 1 || poder > 100)
-            return "Poder debe estar entre 1 y 100.";
+            return "El poder debe estar entre 1 y 100.";
 
         if (string.IsNullOrWhiteSpace(habilidadEspecial))
             return "La habilidad especial es obligatoria.";
@@ -52,15 +58,19 @@ public static class ValidacionService
             return "El arma es obligatoria.";
 
         if (nivelPeligrosidad < 1 || nivelPeligrosidad > 10)
-            return "NivelPeligrosidad debe estar entre 1 y 10.";
+            return "El nivel de peligrosidad debe estar entre 1 y 10.";
 
         if (string.IsNullOrWhiteSpace(imagenUrl))
-            return "ImagenUrl es obligatoria.";
+            return "La URL de imagen es obligatoria.";
 
         return null;
     }
 
-    public static string? ValidarEvento(string nombre, string ubicacion, string descripcion, int anio)
+    public static string? ValidarEvento(
+        string nombre,
+        string ubicacion,
+        string descripcion,
+        int anio)
     {
         if (string.IsNullOrWhiteSpace(nombre))
             return "El nombre del evento es obligatorio.";
@@ -71,8 +81,8 @@ public static class ValidacionService
         if (string.IsNullOrWhiteSpace(descripcion))
             return "La descripción es obligatoria.";
 
-        if (anio < -50000 || anio > 50000)
-            return "El año está fuera del rango permitido.";
+        if (anio < -5000 || anio > 5000)
+            return "El año del evento debe estar entre -5000 y 5000.";
 
         return null;
     }
