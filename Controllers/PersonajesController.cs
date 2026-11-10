@@ -36,5 +36,70 @@ namespace ApiCatalogo_Galactico.Controllers
 
             return Ok(await _personajeService.ListarAsync(faccion, fuerzaSensitivo, estado));
         }
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<PersonajeDto>> ObtenerPorId(int id)
+        {
+            var personaje = await _personajeService.ObtenerPorIdAsync(id);
+            return personaje is null ? NotFound() : Ok(personaje);
+        }
+
+        [HttpGet("{id:int}/carta")]
+        public async Task<ActionResult<CardDto>> ObtenerCarta(int id)
+        {
+            var personaje = await _personajeService.ObtenerPorIdAsync(id);
+            if (personaje is null)
+                return NotFound(new { mensaje = "Personaje no encontrado." });
+
+            var card = await _cardService.ObtenerPorPersonajeAsync(id);
+            return card is null ? NotFound(new { mensaje = "El personaje no tiene una carta asociada." }) : Ok(card);
+        }
+
+        [HttpGet("{id:int}/eventos")]
+        public async Task<ActionResult<IEnumerable<EventoDto>>> ObtenerEventos(int id)
+        {
+            var personaje = await _personajeService.ObtenerPorIdAsync(id);
+            if (personaje is null)
+                return NotFound(new { mensaje = "Personaje no encontrado." });
+
+            return Ok(await _eventoService.ObtenerPorPersonajeAsync(id));
+        }
+
+        [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<PersonajeDto>> Crear(PersonajeCrearDto dto)
+        {
+            var (creado, error) = await _personajeService.CrearAsync(dto);
+            if (error is not null)
+                return BadRequest(new { mensaje = error });
+
+            return CreatedAtAction(nameof(ObtenerPorId), new { id = creado!.Id }, creado);
+        }
+
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult<PersonajeDto>> Actualizar(int id, PersonajeCrearDto dto)
+        {
+            var (actualizado, error, encontrado) = await _personajeService.ActualizarAsync(id, dto);
+            if (!encontrado)
+                return NotFound();
+
+            if (error is not null)
+                return BadRequest(new { mensaje = error });
+
+            return Ok(actualizado);
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Eliminar(int id)
+        {
+            var resultado = await _personajeService.EliminarAsync(id);
+            return resultado switch
+            {
+                ResultadoEliminacionPersonaje.Eliminado => NoContent(),
+                ResultadoEliminacionPersonaje.TieneCarta => Conflict(new { mensaje = "No se puede eliminar el personaje porque tiene una carta asociada." }),
+                ResultadoEliminacionPersonaje.ParticipaEnEventos => Conflict(new { mensaje = "No se puede eliminar el personaje porque participa en uno o más eventos." }),
+                _ => NotFound()
+            };
+        }
     }
 }
