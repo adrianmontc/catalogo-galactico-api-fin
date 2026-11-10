@@ -11,15 +11,18 @@ namespace ApiCatalogo_Galactico.Controllers
         private readonly IPersonajeService _personajeService;
         private readonly ICardService _cardService;
         private readonly IEventoService _eventoService;
+        private readonly IEstadisticaService _estadisticaService;
 
         public PersonajesController(
             IPersonajeService personajeService,
             ICardService cardService,
-            IEventoService eventoService)
+            IEventoService eventoService,
+            IEstadisticaService estadisticaService)
         {
             _personajeService = personajeService;
             _cardService = cardService;
             _eventoService = eventoService;
+            _estadisticaService = estadisticaService;
         }
 
         [HttpGet]
@@ -36,6 +39,23 @@ namespace ApiCatalogo_Galactico.Controllers
 
             return Ok(await _personajeService.ListarAsync(faccion, fuerzaSensitivo, estado));
         }
+
+        [HttpGet("ranking")]
+        public async Task<ActionResult<IEnumerable<RankingPersonajeDto>>> Ranking(
+            [FromQuery] string? por,
+            [FromQuery] int? limite)
+        {
+            if (!string.Equals(por, "poder", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { mensaje = "El parámetro 'por' debe ser 'poder'." });
+
+            var cantidad = limite ?? 10;
+
+            if (cantidad < 1 || cantidad > 50)
+                return BadRequest(new { mensaje = "El límite debe estar entre 1 y 50." });
+
+            return Ok(await _estadisticaService.RankingPorPoderAsync(cantidad));
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<PersonajeDto>> ObtenerPorId(int id)
         {
@@ -103,3 +123,4 @@ namespace ApiCatalogo_Galactico.Controllers
         }
     }
 }
+
