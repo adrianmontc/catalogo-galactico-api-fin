@@ -21,6 +21,17 @@ namespace ApiCatalogo_Galactico.Controllers
             return Ok(await _service.ListarAsync());
         }
 
+        [HttpGet("mas-poderosas")]
+        public async Task<ActionResult<IEnumerable<CardDto>>> MasPoderosas([FromQuery] int? limite)
+        {
+            var cantidad = limite ?? 5;
+
+            if (cantidad < 1 || cantidad > 50)
+                return BadRequest(new { mensaje = "El límite debe estar entre 1 y 50." });
+
+            return Ok(await _service.MasPoderosasAsync(cantidad));
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<CardDto>> ObtenerPorId(int id)
         {
