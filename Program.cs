@@ -1,5 +1,7 @@
 using ApiCatalogo_Galactico.Data;
+using ApiCatalogo_Galactico.Models;
 using ApiCatalogo_Galactico.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +22,9 @@ builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<IEventoService, EventoService>();
 builder.Services.AddScoped<IEstadisticaService, EstadisticaService>();
 builder.Services.AddScoped<ISimulacionService, SimulacionService>();
+builder.Services.AddScoped<IPasswordHasher<Nave>, PasswordHasher<Nave>>();
+builder.Services.AddScoped<INaveService, NaveService>();
+builder.Services.AddSingleton<ICifradoService, CifradoService>();
 
 var app = builder.Build();
 
