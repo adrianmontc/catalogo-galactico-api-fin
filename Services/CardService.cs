@@ -32,6 +32,26 @@ public class CardService : ICardService
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<CardDto>> MasPoderosasAsync(int limite)
+    {
+        return await _db.Cards
+            .AsNoTracking()
+            .OrderByDescending(c => c.Poder)
+            .ThenByDescending(c => c.NivelPeligrosidad)
+            .Take(limite)
+            .Select(c => new CardDto
+            {
+                Id = c.Id,
+                PersonajeId = c.PersonajeId,
+                Poder = c.Poder,
+                HabilidadEspecial = c.HabilidadEspecial,
+                Arma = c.Arma,
+                NivelPeligrosidad = c.NivelPeligrosidad,
+                ImagenUrl = c.ImagenUrl
+            })
+            .ToListAsync();
+    }
+
     public async Task<CardDto?> ObtenerPorIdAsync(int id)
     {
         return await _db.Cards
