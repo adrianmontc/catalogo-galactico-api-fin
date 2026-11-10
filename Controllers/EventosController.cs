@@ -9,17 +9,12 @@ namespace ApiCatalogo_Galactico.Controllers
     public class EventosController : ControllerBase
     {
         private readonly IEventoService _service;
-        private readonly IEstadisticaService _estadisticaService;
-        private readonly ISimulacionService _simulacionService;
+        private readonly INaveService _naveService;
 
-        public EventosController(
-            IEventoService service,
-            IEstadisticaService estadisticaService,
-            ISimulacionService simulacionService)
+        public EventosController(IEventoService service, INaveService naveService)
         {
             _service = service;
-            _estadisticaService = estadisticaService;
-            _simulacionService = simulacionService;
+            _naveService = naveService;
         }
 
         [HttpGet]
@@ -44,30 +39,23 @@ namespace ApiCatalogo_Galactico.Controllers
             return participantes is null ? NotFound() : Ok(participantes);
         }
 
-        [HttpGet("{id:int}/mvp")]
-        public async Task<ActionResult<MvpEventoDto>> ObtenerMvp(int id)
+        [HttpGet("{id:int}/despliegue-flota")]
+        public async Task<ActionResult<DespliegueFlotaEventoDto>> ObtenerDespliegueFlota(int id)
         {
-            var (mvp, existe) = await _estadisticaService.ObtenerMvpAsync(id);
-            if (!existe)
-                return NotFound(new { mensaje = "Evento no encontrado." });
-
-            if (mvp is null)
-                return NotFound(new { mensaje = "Ningún participante del evento tiene una carta asociada." });
-
-            return Ok(mvp);
+            var reporte = await _naveService.ObtenerDespliegueFlotaAsync(id);
+            return reporte is null ? NotFound(new { mensaje = "Evento no encontrado." }) : Ok(reporte);
         }
 
-        [HttpGet("{id:int}/simular")]
-        public async Task<ActionResult<ResultadoSimulacionDto>> Simular(int id)
+        [HttpGet("{id:int}/refuerzos-disponibles")]
+        public async Task<ActionResult<IEnumerable<RefuerzoDisponibleDto>>> ObtenerRefuerzosDisponibles(
+            int id,
+            [FromQuery] int poderMinimo = 120)
         {
-            var (resultado, error, existe) = await _simulacionService.SimularAsync(id);
-            if (!existe)
-                return NotFound(new { mensaje = "Evento no encontrado." });
+            if (poderMinimo < 1 || poderMinimo > 200)
+                return BadRequest(new { mensaje = "El poderMinimo debe estar entre 1 y 200." });
 
-            if (error is not null)
-                return BadRequest(new { mensaje = error });
-
-            return Ok(resultado);
+            var refuerzos = await _naveService.ObtenerRefuerzosDisponiblesAsync(id, poderMinimo);
+            return refuerzos is null ? NotFound(new { mensaje = "Evento no encontrado." }) : Ok(refuerzos);
         }
 
         [HttpPost]
