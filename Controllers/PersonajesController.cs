@@ -11,17 +11,20 @@ namespace ApiCatalogo_Galactico.Controllers
         private readonly IPersonajeService _personajeService;
         private readonly ICardService _cardService;
         private readonly IEventoService _eventoService;
+        private readonly IEstadisticaService _estadisticaService;
         private readonly INaveService _naveService;
 
         public PersonajesController(
             IPersonajeService personajeService,
             ICardService cardService,
             IEventoService eventoService,
+            IEstadisticaService estadisticaService,
             INaveService naveService)
         {
             _personajeService = personajeService;
             _cardService = cardService;
             _eventoService = eventoService;
+            _estadisticaService = estadisticaService;
             _naveService = naveService;
         }
 
@@ -38,6 +41,22 @@ namespace ApiCatalogo_Galactico.Controllers
                 return BadRequest(new { mensaje = "El estado debe ser vivo, muerto o desconocido." });
 
             return Ok(await _personajeService.ListarAsync(faccion, fuerzaSensitivo, estado));
+        }
+
+        [HttpGet("ranking")]
+        public async Task<ActionResult<IEnumerable<RankingPersonajeDto>>> Ranking(
+            [FromQuery] string? por,
+            [FromQuery] int? limite)
+        {
+            if (!string.Equals(por, "poder", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { mensaje = "El parámetro 'por' debe ser 'poder'." });
+
+            var cantidad = limite ?? 10;
+
+            if (cantidad < 1 || cantidad > 50)
+                return BadRequest(new { mensaje = "El límite debe estar entre 1 y 50." });
+
+            return Ok(await _estadisticaService.RankingPorPoderAsync(cantidad));
         }
 
         [HttpGet("{id:int}")]
