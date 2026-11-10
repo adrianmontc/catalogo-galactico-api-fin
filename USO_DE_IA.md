@@ -15,7 +15,7 @@ Durante el desarrollo y migración de este proyecto utilicé **ChatGPT / Gemini*
 
 ---
 
-## 3. Qué acepté, qué corregí y por qué
+## 3. Qué acepté, qué corregi y por que
 
 - **Lo que acepté**:
   - Acepté el esqueleto base de los controladores CRUD y la separación de los DTOs en archivos independientes porque me ahorró tiempo de escritura manual repetitiva y mantenía los mismos códigos de respuesta HTTP (`200`, `201`, `204`, `400`, `404` y `409`).
