@@ -37,6 +37,20 @@ namespace ApiCatalogo_Galactico.Data
                 e.Property(p => p.Afiliacion).IsRequired().HasMaxLength(100);
                 e.Property(p => p.Estado).IsRequired().HasMaxLength(30);
             });
+
+            modelBuilder.Entity<CardPersonaje>(e =>
+            {
+                e.Property(c => c.HabilidadEspecial).IsRequired().HasMaxLength(150);
+                e.Property(c => c.Arma).IsRequired().HasMaxLength(100);
+                e.Property(c => c.ImagenUrl).IsRequired().HasMaxLength(255);
+                e.HasIndex(c => c.PersonajeId).IsUnique();
+                e.HasOne(c => c.Personaje)
+                    .WithOne(p => p.Card)
+                    .HasForeignKey<CardPersonaje>(c => c.PersonajeId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+           
         }
     }
 }
