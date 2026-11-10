@@ -50,7 +50,22 @@ namespace ApiCatalogo_Galactico.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-           
+            modelBuilder.Entity<Evento>(e =>
+            {
+                e.Property(ev => ev.Nombre).IsRequired().HasMaxLength(120);
+                e.Property(ev => ev.Ubicacion).IsRequired().HasMaxLength(120);
+                e.Property(ev => ev.Descripcion).IsRequired().HasMaxLength(500);
+                e.Property(ev => ev.Resultado).HasMaxLength(200);
+                e.Property(ev => ev.Ganador).HasMaxLength(100);
+
+                e.Property(ev => ev.Participantes)
+                    .HasConversion(intListConverter)
+                    .Metadata.SetValueComparer(intListComparer);
+
+                e.Property(ev => ev.Muertos)
+                    .HasConversion(intListConverter)
+                    .Metadata.SetValueComparer(intListComparer);
+            });
         }
     }
 }
