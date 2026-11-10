@@ -9,5 +9,7 @@ public class Personaje
     public string Estado { get; set; } = string.Empty;
     public bool FuerzaSensitivo { get; set; }
     public int? AnioMuerte { get; set; }
+
     public CardPersonaje? Card { get; set; }
+    public ICollection<Nave> Naves { get; set; } = new List<Nave>();
 }
