@@ -1,7 +1,7 @@
 ﻿namespace ApiCatalogo_Galactico.Models;
 public class Personaje
 {
-    public int Id { get; init; }
+    public int Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string Especie { get; set; } = string.Empty;
     public string Faccion { get; set; } = string.Empty;
@@ -9,4 +9,5 @@ public class Personaje
     public string Estado { get; set; } = string.Empty;
     public bool FuerzaSensitivo { get; set; }
     public int? AnioMuerte { get; set; }
+    public CardPersonaje? Card { get; set; }
 }
