@@ -15,6 +15,7 @@ namespace ApiCatalogo_Galactico.Data
         public DbSet<Personaje> Personajes => Set<Personaje>();
         public DbSet<CardPersonaje> Cards => Set<CardPersonaje>();
         public DbSet<Evento> Eventos => Set<Evento>();
+        public DbSet<Nave> Naves => Set<Nave>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -65,6 +66,18 @@ namespace ApiCatalogo_Galactico.Data
                 e.Property(ev => ev.Muertos)
                     .HasConversion(intListConverter)
                     .Metadata.SetValueComparer(intListComparer);
+            });
+
+            modelBuilder.Entity<Nave>(e =>
+            {
+                e.Property(n => n.Nombre).IsRequired().HasMaxLength(100);
+                e.Property(n => n.Modelo).IsRequired().HasMaxLength(80);
+                e.Property(n => n.CodigoIgnicionHash).IsRequired().HasMaxLength(255);
+                e.Property(n => n.CoordenadasHangar).IsRequired().HasMaxLength(255);
+                e.HasOne(n => n.Personaje)
+                    .WithMany(p => p.Naves)
+                    .HasForeignKey(n => n.PersonajeId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }
