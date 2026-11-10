@@ -1,54 +1,39 @@
-using ApiCatalogo_Galactico.Endpoints;
+using ApiCatalogo_Galactico.Data;
 using ApiCatalogo_Galactico.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Falta la cadena de conexión DefaultConnection");
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseMySql(
+        connectionString,
+        new MySqlServerVersion(new Version(8, 0, 36)),
+        mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
+
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
-    {
-        Title = "Catalogo galactico de personajes y eventos",
-        Version = "v1",
-        Description = @"Una API REST hecha con Minimal APIs.
-
-Este sistema permite la administracion de:
-* **Personajes:** Registro de entidades, facciones y estados vitales.
-* **Cartas Coleccionables:** Asignacion de atributos de combate, armas y peligrosidad.
-* **Eventos:** Historial cruzado con validacion temporal cronologica (ABY/BBY).
-
-Ademas, incluye logica de negocio avanzada para la simulacion de batallas, calculo de MVP por evento y generacion de rankings estadisticos."
-    });
-});
-
-builder.Services.AddSingleton<PersonajeService>();
-builder.Services.AddSingleton<CardService>();
-builder.Services.AddSingleton<EventoService>();
-builder.Services.AddSingleton<EstadisticaService>();
-builder.Services.AddSingleton<SimulacionService>();
+builder.Services.AddScoped<IPersonajeService, PersonajeService>();
+builder.Services.AddScoped<ICardService, CardService>();
+builder.Services.AddScoped<IEventoService, EventoService>();
+builder.Services.AddScoped<IEstadisticaService, EstadisticaService>();
+builder.Services.AddScoped<ISimulacionService, SimulacionService>();
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-
-    app.UseSwagger();
-
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Catalogo galactico API v1");
-        options.RoutePrefix = "swagger";
+        options.SwaggerEndpoint("/openapi/v1.json", "v1");
     });
 }
 
-app.MapGet("/", () => Results.Redirect("/swagger"))
-    .ExcludeFromDescription();
-
-var api = app.MapGroup("/api");
-
-api.MapPersonajeEndpoints();
-api.MapCardEndpoints();
-api.MapEventoEndpoints();
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
 
 app.Run();
