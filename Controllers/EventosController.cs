@@ -22,5 +22,51 @@ namespace ApiCatalogo_Galactico.Controllers
         {
             return Ok(await _service.ListarAsync(anioDesde, anioHasta));
         }
+
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<EventoDto>> ObtenerPorId(int id)
+        {
+            var evento = await _service.ObtenerPorIdAsync(id);
+            return evento is null ? NotFound() : Ok(evento);
+        }
+
+        [HttpGet("{id:int}/participantes")]
+        public async Task<ActionResult<IEnumerable<PersonajeDto>>> ObtenerParticipantes(int id)
+        {
+            var participantes = await _service.ObtenerParticipantesAsync(id);
+            return participantes is null ? NotFound() : Ok(participantes);
+        }
+
+        [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<EventoDto>> Crear(EventoCrearDto dto)
+        {
+            var (creado, error) = await _service.CrearAsync(dto);
+            if (error is not null)
+                return BadRequest(new { mensaje = error });
+
+            return CreatedAtAction(nameof(ObtenerPorId), new { id = creado!.Id }, creado);
+        }
+
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult<EventoDto>> Actualizar(int id, EventoCrearDto dto)
+        {
+            var (actualizado, error, encontrado) = await _service.ActualizarAsync(id, dto);
+            if (!encontrado)
+                return NotFound();
+
+            if (error is not null)
+                return BadRequest(new { mensaje = error });
+
+            return Ok(actualizado);
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Eliminar(int id)
+        {
+            var eliminado = await _service.EliminarAsync(id);
+            return eliminado ? NoContent() : NotFound();
+        }
     }
 }
