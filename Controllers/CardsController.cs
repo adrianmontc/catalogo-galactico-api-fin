@@ -20,6 +20,7 @@ namespace ApiCatalogo_Galactico.Controllers
         {
             return Ok(await _service.ListarAsync());
         }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<CardDto>> ObtenerPorId(int id)
         {
