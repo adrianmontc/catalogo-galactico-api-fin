@@ -1,23 +1,75 @@
 ﻿using ApiCatalogo_Galactico.Data;
 using ApiCatalogo_Galactico.Models;
+using ApiCatalogo_Galactico.Dtos;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApiCatalogo_Galactico.Services;
 
-public class CardService
+public class CardService : ICardService
 {
-    public IEnumerable<CardPersonaje> ObtenerTodas() =>
-        GalaxiaData.Cards.OrderByDescending(c => c.Poder);
+    private readonly AppDbContext _db;
 
-    public CardPersonaje? Obtener(int id) =>
-        GalaxiaData.Cards.FirstOrDefault(c => c.Id == id);
-
-    public CardPersonaje? ObtenerPorPersonaje(int personajeId) =>
-        GalaxiaData.Cards.FirstOrDefault(c => c.PersonajeId == personajeId);
-
-    public string? Crear(CrearCardDto dto, out CardPersonaje? card)
+    public CardService(AppDbContext db)
     {
-        card = null;
+        _db = db;
+    }
 
+    public async Task<IEnumerable<CardDto>> ListarAsync()
+    {
+        return await _db.Cards
+            .AsNoTracking()
+            .OrderByDescending(c => c.Poder)
+            .Select(c => new CardDto
+            {
+                Id = c.Id,
+                PersonajeId = c.PersonajeId,
+                Poder = c.Poder,
+                HabilidadEspecial = c.HabilidadEspecial,
+                Arma = c.Arma,
+                NivelPeligrosidad = c.NivelPeligrosidad,
+                ImagenUrl = c.ImagenUrl
+            })
+            .ToListAsync();
+    }
+
+    public async Task<CardDto?> ObtenerPorIdAsync(int id)
+    {
+        return await _db.Cards
+            .AsNoTracking()
+            .Where(c => c.Id == id)
+            .Select(c => new CardDto
+            {
+                Id = c.Id,
+                PersonajeId = c.PersonajeId,
+                Poder = c.Poder,
+                HabilidadEspecial = c.HabilidadEspecial,
+                Arma = c.Arma,
+                NivelPeligrosidad = c.NivelPeligrosidad,
+                ImagenUrl = c.ImagenUrl
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<CardDto?> ObtenerPorPersonajeAsync(int personajeId)
+    {
+        return await _db.Cards
+            .AsNoTracking()
+            .Where(c => c.PersonajeId == personajeId)
+            .Select(c => new CardDto
+            {
+                Id = c.Id,
+                PersonajeId = c.PersonajeId,
+                Poder = c.Poder,
+                HabilidadEspecial = c.HabilidadEspecial,
+                Arma = c.Arma,
+                NivelPeligrosidad = c.NivelPeligrosidad,
+                ImagenUrl = c.ImagenUrl
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<(CardDto? Creada, string? Error, bool Conflicto)> CrearAsync(CardCrearDto dto)
+    {
         var error = ValidacionService.ValidarCard(
             dto.PersonajeId,
             dto.Poder,
@@ -27,17 +79,18 @@ public class CardService
             dto.ImagenUrl);
 
         if (error is not null)
-            return error;
+            return (null, error, false);
 
-        if (!GalaxiaData.Personajes.Any(p => p.Id == dto.PersonajeId))
-            return "El personaje indicado no existe.";
+        var existePersonaje = await _db.Personajes.AnyAsync(p => p.Id == dto.PersonajeId);
+        if (!existePersonaje)
+            return (null, "El personaje indicado no existe.", false);
 
-        if (GalaxiaData.Cards.Any(c => c.PersonajeId == dto.PersonajeId))
-            return "El personaje ya tiene una carta asociada.";
+        var yaTieneCarta = await _db.Cards.AnyAsync(c => c.PersonajeId == dto.PersonajeId);
+        if (yaTieneCarta)
+            return (null, "El personaje ya tiene una carta asociada.", true);
 
-        card = new CardPersonaje
+        var card = new CardPersonaje
         {
-            Id = GalaxiaData.SiguienteId(GalaxiaData.Cards, c => c.Id),
             PersonajeId = dto.PersonajeId,
             Poder = dto.Poder,
             HabilidadEspecial = dto.HabilidadEspecial.Trim(),
@@ -46,16 +99,28 @@ public class CardService
             ImagenUrl = dto.ImagenUrl.Trim()
         };
 
-        GalaxiaData.Cards.Add(card);
-        return null;
+        _db.Cards.Add(card);
+        await _db.SaveChangesAsync();
+
+        var resultado = new CardDto
+        {
+            Id = card.Id,
+            PersonajeId = card.PersonajeId,
+            Poder = card.Poder,
+            HabilidadEspecial = card.HabilidadEspecial,
+            Arma = card.Arma,
+            NivelPeligrosidad = card.NivelPeligrosidad,
+            ImagenUrl = card.ImagenUrl
+        };
+
+        return (resultado, null, false);
     }
 
-    public string? Actualizar(int id, ActualizarCardDto dto)
+    public async Task<(CardDto? Actualizada, string? Error, bool Encontrada, bool Conflicto)> ActualizarAsync(int id, CardCrearDto dto)
     {
-        var card = Obtener(id);
-
+        var card = await _db.Cards.FindAsync(id);
         if (card is null)
-            return "NO_ENCONTRADO";
+            return (null, null, false, false);
 
         var error = ValidacionService.ValidarCard(
             dto.PersonajeId,
@@ -66,13 +131,15 @@ public class CardService
             dto.ImagenUrl);
 
         if (error is not null)
-            return error;
+            return (null, error, true, false);
 
-        if (!GalaxiaData.Personajes.Any(p => p.Id == dto.PersonajeId))
-            return "El personaje indicado no existe.";
+        var existePersonaje = await _db.Personajes.AnyAsync(p => p.Id == dto.PersonajeId);
+        if (!existePersonaje)
+            return (null, "El personaje indicado no existe.", true, false);
 
-        if (GalaxiaData.Cards.Any(c => c.PersonajeId == dto.PersonajeId && c.Id != id))
-            return "El personaje ya tiene otra carta asociada.";
+        var otraCarta = await _db.Cards.AnyAsync(c => c.PersonajeId == dto.PersonajeId && c.Id != id);
+        if (otraCarta)
+            return (null, "El personaje ya tiene otra carta asociada.", true, true);
 
         card.PersonajeId = dto.PersonajeId;
         card.Poder = dto.Poder;
@@ -81,29 +148,30 @@ public class CardService
         card.NivelPeligrosidad = dto.NivelPeligrosidad;
         card.ImagenUrl = dto.ImagenUrl.Trim();
 
-        return null;
+        await _db.SaveChangesAsync();
+
+        var resultado = new CardDto
+        {
+            Id = card.Id,
+            PersonajeId = card.PersonajeId,
+            Poder = card.Poder,
+            HabilidadEspecial = card.HabilidadEspecial,
+            Arma = card.Arma,
+            NivelPeligrosidad = card.NivelPeligrosidad,
+            ImagenUrl = card.ImagenUrl
+        };
+
+        return (resultado, null, true, false);
     }
 
-    public IEnumerable<RankingPersonaje> Ranking(int limite)
+    public async Task<bool> EliminarAsync(int id)
     {
-        return GalaxiaData.Cards
-            .Join(
-                GalaxiaData.Personajes,
-                card => card.PersonajeId,
-                personaje => personaje.Id,
-                (card, personaje) => new RankingPersonaje(
-                    personaje.Id,
-                    personaje.Nombre,
-                    personaje.Faccion,
-                    card.Poder,
-                    card.NivelPeligrosidad))
-            .OrderByDescending(r => r.Poder)
-            .Take(limite);
-    }
+        var card = await _db.Cards.FindAsync(id);
+        if (card is null)
+            return false;
 
-    public IEnumerable<CardPersonaje> MasPoderosas(int limite) =>
-        GalaxiaData.Cards
-            .OrderByDescending(c => c.Poder)
-            .ThenByDescending(c => c.NivelPeligrosidad)
-            .Take(limite);
+        _db.Cards.Remove(card);
+        await _db.SaveChangesAsync();
+        return true;
+    }
 }
