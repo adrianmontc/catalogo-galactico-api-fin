@@ -108,6 +108,47 @@ namespace ApiCatalogo_Galactico.Migrations
                     b.ToTable("Eventos");
                 });
 
+            modelBuilder.Entity("ApiCatalogo_Galactico.Models.Nave", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodigoIgnicionHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("CoordenadasHangar")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Modelo")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("PersonajeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PoderFuego")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonajeId");
+
+                    b.ToTable("Naves");
+                });
+
             modelBuilder.Entity("ApiCatalogo_Galactico.Models.Personaje", b =>
                 {
                     b.Property<int>("Id")
@@ -163,9 +204,22 @@ namespace ApiCatalogo_Galactico.Migrations
                     b.Navigation("Personaje");
                 });
 
+            modelBuilder.Entity("ApiCatalogo_Galactico.Models.Nave", b =>
+                {
+                    b.HasOne("ApiCatalogo_Galactico.Models.Personaje", "Personaje")
+                        .WithMany("Naves")
+                        .HasForeignKey("PersonajeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Personaje");
+                });
+
             modelBuilder.Entity("ApiCatalogo_Galactico.Models.Personaje", b =>
                 {
                     b.Navigation("Card");
+
+                    b.Navigation("Naves");
                 });
 #pragma warning restore 612, 618
         }
