@@ -1,33 +1,69 @@
 ﻿using ApiCatalogo_Galactico.Data;
 using ApiCatalogo_Galactico.Models;
+using ApiCatalogo_Galactico.Dtos;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApiCatalogo_Galactico.Services;
 
-public class PersonajeService
+public class PersonajeService : IPersonajeService
 {
-    public IEnumerable<Personaje> Filtrar(string? faccion, bool? fuerzaSensitivo, string? estado)
+    private readonly AppDbContext _db;
+
+    public PersonajeService(AppDbContext db)
     {
-        IEnumerable<Personaje> resultado = GalaxiaData.Personajes;
-
-        if (!string.IsNullOrWhiteSpace(faccion))
-            resultado = resultado.Where(p => p.Faccion == faccion);
-
-        if (fuerzaSensitivo.HasValue)
-            resultado = resultado.Where(p => p.FuerzaSensitivo == fuerzaSensitivo.Value);
-
-        if (!string.IsNullOrWhiteSpace(estado))
-            resultado = resultado.Where(p => p.Estado == estado);
-
-        return resultado.OrderBy(p => p.Id);
+        _db = db;
     }
 
-    public Personaje? Obtener(int id) =>
-        GalaxiaData.Personajes.FirstOrDefault(p => p.Id == id);
-
-    public string? Crear(CrearPersonajeDto dto, out Personaje? personaje)
+    public async Task<IEnumerable<PersonajeDto>> ListarAsync(string? faccion, bool? fuerzaSensitivo, string? estado)
     {
-        personaje = null;
+        var query = _db.Personajes.AsNoTracking().AsQueryable();
 
+        if (!string.IsNullOrWhiteSpace(faccion))
+            query = query.Where(p => p.Faccion == faccion);
+
+        if (fuerzaSensitivo.HasValue)
+            query = query.Where(p => p.FuerzaSensitivo == fuerzaSensitivo.Value);
+
+        if (!string.IsNullOrWhiteSpace(estado))
+            query = query.Where(p => p.Estado == estado);
+
+        return await query
+            .OrderBy(p => p.Id)
+            .Select(p => new PersonajeDto
+            {
+                Id = p.Id,
+                Nombre = p.Nombre,
+                Especie = p.Especie,
+                Faccion = p.Faccion,
+                Afiliacion = p.Afiliacion,
+                Estado = p.Estado,
+                FuerzaSensitivo = p.FuerzaSensitivo,
+                AnioMuerte = p.AnioMuerte
+            })
+            .ToListAsync();
+    }
+
+    public async Task<PersonajeDto?> ObtenerPorIdAsync(int id)
+    {
+        return await _db.Personajes
+            .AsNoTracking()
+            .Where(p => p.Id == id)
+            .Select(p => new PersonajeDto
+            {
+                Id = p.Id,
+                Nombre = p.Nombre,
+                Especie = p.Especie,
+                Faccion = p.Faccion,
+                Afiliacion = p.Afiliacion,
+                Estado = p.Estado,
+                FuerzaSensitivo = p.FuerzaSensitivo,
+                AnioMuerte = p.AnioMuerte
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<(PersonajeDto? Creado, string? Error)> CrearAsync(PersonajeCrearDto dto)
+    {
         var error = ValidacionService.ValidarPersonaje(
             dto.Nombre,
             dto.Especie,
@@ -37,11 +73,10 @@ public class PersonajeService
             dto.AnioMuerte);
 
         if (error is not null)
-            return error;
+            return (null, error);
 
-        personaje = new Personaje
+        var personaje = new Personaje
         {
-            Id = GalaxiaData.SiguienteId(GalaxiaData.Personajes, p => p.Id),
             Nombre = dto.Nombre.Trim(),
             Especie = dto.Especie.Trim(),
             Faccion = dto.Faccion,
@@ -51,16 +86,29 @@ public class PersonajeService
             AnioMuerte = dto.AnioMuerte
         };
 
-        GalaxiaData.Personajes.Add(personaje);
-        return null;
+        _db.Personajes.Add(personaje);
+        await _db.SaveChangesAsync();
+
+        var resultado = new PersonajeDto
+        {
+            Id = personaje.Id,
+            Nombre = personaje.Nombre,
+            Especie = personaje.Especie,
+            Faccion = personaje.Faccion,
+            Afiliacion = personaje.Afiliacion,
+            Estado = personaje.Estado,
+            FuerzaSensitivo = personaje.FuerzaSensitivo,
+            AnioMuerte = personaje.AnioMuerte
+        };
+
+        return (resultado, null);
     }
 
-    public string? Actualizar(int id, ActualizarPersonajeDto dto)
+    public async Task<(PersonajeDto? Actualizado, string? Error, bool Encontrado)> ActualizarAsync(int id, PersonajeCrearDto dto)
     {
-        var personaje = Obtener(id);
-
+        var personaje = await _db.Personajes.FindAsync(id);
         if (personaje is null)
-            return "NO_ENCONTRADO";
+            return (null, null, false);
 
         var error = ValidacionService.ValidarPersonaje(
             dto.Nombre,
@@ -71,7 +119,7 @@ public class PersonajeService
             dto.AnioMuerte);
 
         if (error is not null)
-            return error;
+            return (null, error, true);
 
         personaje.Nombre = dto.Nombre.Trim();
         personaje.Especie = dto.Especie.Trim();
@@ -81,51 +129,39 @@ public class PersonajeService
         personaje.FuerzaSensitivo = dto.FuerzaSensitivo;
         personaje.AnioMuerte = dto.AnioMuerte;
 
-        return null;
-    }
+        await _db.SaveChangesAsync();
 
-    public string? Eliminar(int id)
-    {
-        var personaje = Obtener(id);
-
-        if (personaje is null)
-            return "NO_ENCONTRADO";
-
-        if (GalaxiaData.Cards.Any(c => c.PersonajeId == id))
-            return "No se puede eliminar el personaje porque tiene una carta asociada.";
-
-        if (GalaxiaData.Eventos.Any(e => e.Participantes.Contains(id)))
-            return "No se puede eliminar el personaje porque participa en uno o más eventos.";
-
-        GalaxiaData.Personajes.Remove(personaje);
-        return null;
-    }
-
-    public string? ValidarParticipacionTemporal(int personajeId, int anioEvento)
-    {
-        var personaje = Obtener(personajeId);
-
-        if (personaje is null)
-            return "El personaje indicado no existe.";
-
-        if (personaje.Estado == "muerto" &&
-            personaje.AnioMuerte.HasValue &&
-            anioEvento > personaje.AnioMuerte.Value)
+        var resultado = new PersonajeDto
         {
-            return $"El personaje {personaje.Nombre} no puede participar en un evento posterior a su muerte en {personaje.AnioMuerte.Value}.";
-        }
+            Id = personaje.Id,
+            Nombre = personaje.Nombre,
+            Especie = personaje.Especie,
+            Faccion = personaje.Faccion,
+            Afiliacion = personaje.Afiliacion,
+            Estado = personaje.Estado,
+            FuerzaSensitivo = personaje.FuerzaSensitivo,
+            AnioMuerte = personaje.AnioMuerte
+        };
 
-        return null;
+        return (resultado, null, true);
     }
 
-    public void RegistrarMuerte(int personajeId, int anioMuerte)
+    public async Task<ResultadoEliminacionPersonaje> EliminarAsync(int id)
     {
-        var personaje = Obtener(personajeId);
-
+        var personaje = await _db.Personajes.FindAsync(id);
         if (personaje is null)
-            return;
+            return ResultadoEliminacionPersonaje.NoEncontrado;
 
-        personaje.Estado = "muerto";
-        personaje.AnioMuerte = anioMuerte;
+        var tieneCarta = await _db.Cards.AnyAsync(c => c.PersonajeId == id);
+        if (tieneCarta)
+            return ResultadoEliminacionPersonaje.TieneCarta;
+
+        var eventos = await _db.Eventos.AsNoTracking().ToListAsync();
+        if (eventos.Any(e => e.Participantes.Contains(id)))
+            return ResultadoEliminacionPersonaje.ParticipaEnEventos;
+
+        _db.Personajes.Remove(personaje);
+        await _db.SaveChangesAsync();
+        return ResultadoEliminacionPersonaje.Eliminado;
     }
 }
