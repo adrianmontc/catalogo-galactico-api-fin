@@ -9,10 +9,17 @@ namespace ApiCatalogo_Galactico.Controllers
     public class EventosController : ControllerBase
     {
         private readonly IEventoService _service;
+        private readonly IEstadisticaService _estadisticaService;
+        private readonly ISimulacionService _simulacionService;
 
-        public EventosController(IEventoService service)
+        public EventosController(
+            IEventoService service,
+            IEstadisticaService estadisticaService,
+            ISimulacionService simulacionService)
         {
             _service = service;
+            _estadisticaService = estadisticaService;
+            _simulacionService = simulacionService;
         }
 
         [HttpGet]
@@ -35,6 +42,32 @@ namespace ApiCatalogo_Galactico.Controllers
         {
             var participantes = await _service.ObtenerParticipantesAsync(id);
             return participantes is null ? NotFound() : Ok(participantes);
+        }
+
+        [HttpGet("{id:int}/mvp")]
+        public async Task<ActionResult<MvpEventoDto>> ObtenerMvp(int id)
+        {
+            var (mvp, existe) = await _estadisticaService.ObtenerMvpAsync(id);
+            if (!existe)
+                return NotFound(new { mensaje = "Evento no encontrado." });
+
+            if (mvp is null)
+                return NotFound(new { mensaje = "Ningún participante del evento tiene una carta asociada." });
+
+            return Ok(mvp);
+        }
+
+        [HttpGet("{id:int}/simular")]
+        public async Task<ActionResult<ResultadoSimulacionDto>> Simular(int id)
+        {
+            var (resultado, error, existe) = await _simulacionService.SimularAsync(id);
+            if (!existe)
+                return NotFound(new { mensaje = "Evento no encontrado." });
+
+            if (error is not null)
+                return BadRequest(new { mensaje = error });
+
+            return Ok(resultado);
         }
 
         [HttpPost]
