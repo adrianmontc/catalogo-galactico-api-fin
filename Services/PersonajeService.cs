@@ -156,6 +156,10 @@ public class PersonajeService : IPersonajeService
         if (tieneCarta)
             return ResultadoEliminacionPersonaje.TieneCarta;
 
+        var tieneNaves = await _db.Naves.AnyAsync(n => n.PersonajeId == id);
+        if (tieneNaves)
+            return ResultadoEliminacionPersonaje.TieneNaves;
+
         var eventos = await _db.Eventos.AsNoTracking().ToListAsync();
         if (eventos.Any(e => e.Participantes.Contains(id)))
             return ResultadoEliminacionPersonaje.ParticipaEnEventos;
